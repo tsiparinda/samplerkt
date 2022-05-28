@@ -1,4 +1,3 @@
 #lang info
-(define name "samplerkt")
-(define gracket-launcher-libraries '("server.rkt"))
-(define gracket-launcher-names     '("Sample Racket"))
+(define version "1.0")
+(define deps (base))
