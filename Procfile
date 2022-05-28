@@ -1,1 +1,1 @@
-web: racket -l mycollection/server
+web: racket -l heroku-racket-app/server
