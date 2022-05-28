@@ -1,1 +1,1 @@
-web: racket -l samplerkt/server
+web: racket -l server
