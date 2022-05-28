@@ -1,1 +1,1 @@
-web: /app/run
+web: racket -l samplerkt/server
