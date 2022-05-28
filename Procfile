@@ -1,1 +1,1 @@
-web: racket -l my-racket-pkg/server
+web: racket -l /app/racket/collects/server
