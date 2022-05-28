@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# if any of the commands fail, die with a non-clean exit code
+set -e
+
+# use better globbing rules
+shopt -s dotglob nullglob extglob
+
+# indent everything by 7 spaces for alignment
+INDENTATION='       '
+indent() {
+  should_indent=true
+  while IFS= read -r -N 1 c; do
+    if $should_indent; then
+      echo -n "$INDENTATION"
+      should_indent=false
+    fi
+    echo -n "$c"
+    if [[ "$c" == $'\n' ]]; then
+      should_indent=true
+    fi
+  done
+}
+
+BUILD_DIR=$1
+CACHE_DIR=$2
+ENV_DIR=$3
+
+echo "-----> Detecting Racket version"
+
+RACKET_VERSION_PATH="$ENV_DIR/RACKET_VERSION"
+
+if [ ! -f "$RACKET_VERSION_PATH" ]; then
+  echo "     - ERROR: The RACKET_VERSION configuration variable does not appear to be set"
+  echo "     - Aborting..."
+  exit 1
+fi
+
+RACKET_VERSION=$(cat "$RACKET_VERSION_PATH")
+
+if [[ "$RACKET_VERSION" =~ '-minimal'$ ]]; then
+  RACKET_VERSION=${RACKET_VERSION%-minimal}
+  if [[ ${RACKET_VERSION,,} == 'current' || ${RACKET_VERSION,,} == 'head' ]]; then
+    echo "     - Using minimal Racket development snapshot"
+    RACKET_INSTALLER='http://www.cs.utah.edu/plt/snapshots/current/installers/min-racket-current-x86_64-linux-precise.sh'
+  else
+    echo "     - Using minimal Racket version $RACKET_VERSION"
+    if [[ "$RACKET_VERSION" =~ ^6.[0-4](\..+)?$ ]]; then
+      RACKET_INSTALLER="http://mirror.racket-lang.org/installers/${RACKET_VERSION}/racket-minimal-${RACKET_VERSION}-x86_64-linux-ubuntu-precise.sh"
+    else
+      RACKET_INSTALLER="http://mirror.racket-lang.org/installers/${RACKET_VERSION}/racket-minimal-${RACKET_VERSION}-x86_64-linux.sh"
+    fi
+  fi
+else
+  if [[ ${RACKET_VERSION,,} == 'current' || ${RACKET_VERSION,,} == 'head' ]]; then
+    echo "     - Using Racket development snapshot"
+    RACKET_INSTALLER='http://www.cs.utah.edu/plt/snapshots/current/installers/racket-current-x86_64-linux-precise.sh'
+  else
+    echo "     - Using Racket version $RACKET_VERSION"
+    if [[ "$RACKET_VERSION" =~ ^6.[0-4](\..+)?$ ]]; then
+      RACKET_INSTALLER="http://mirror.racket-lang.org/installers/${RACKET_VERSION}/racket-${RACKET_VERSION}-x86_64-linux-ubuntu-precise.sh"
+    else
+      RACKET_INSTALLER="http://mirror.racket-lang.org/installers/${RACKET_VERSION}/racket-${RACKET_VERSION}-x86_64-linux.sh"
+    fi
+  fi
+fi
+
+APP_DIR=$BUILD_DIR/app
+RACKET_DIR=$BUILD_DIR/racket
+
+cd $BUILD_DIR
+
+echo "-----> Moving application into ‘app’ directory"
+
+mkdir -p $APP_DIR
+mv $BUILD_DIR/!(app|Procfile) $APP_DIR/
+
+echo "-----> Building Racket installation"
+echo "     - Downloading prebuilt installer"
+
+mkdir -p $CACHE_DIR
+wget $RACKET_INSTALLER --progress=dot:giga -O $CACHE_DIR/racket-installer.sh |& indent
+chmod +x $CACHE_DIR/racket-installer.sh
+
+echo "     - Unpacking Racket installation"
+
+$CACHE_DIR/racket-installer.sh --in-place --dest $RACKET_DIR |& indent
+
+export PATH=$RACKET_DIR/bin:$PATH
+
+echo "-----> Setting up environment"
+
+mkdir .profile.d
+echo 'export PATH=$PATH:$HOME/racket/bin' >> .profile.d/setup_environment.sh
+
+echo "-----> Installing application package"
+
+raco pkg install -i --no-setup --deps search-auto -n heroku-racket-app --copy $APP_DIR |& indent
+raco setup -DK --fail-fast |& indent
