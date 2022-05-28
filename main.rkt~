@@ -8,13 +8,13 @@
    '(html (head (title "Racket Heroku App"))
           (body (h1 "It works!")))))
 
-(define port (if (getenv "PORT")
+(serve/servlet start #:servlet-path "/")(define port (if (getenv "PORT")
                  (string->number (getenv "PORT"))
                  8080))
 
-(module+ main
+
 (serve/servlet start
                #:servlet-path "/"
                #:listen-ip #f
                #:port port
-               #:command-line? #t))
+               #:command-line? #t)
