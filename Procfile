@@ -1,1 +1,1 @@
-web: racket -l server
+web: racket -l my-racket-pkg/server
