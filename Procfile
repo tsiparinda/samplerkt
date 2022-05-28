@@ -1,1 +1,1 @@
-web: racket -l heroku-racket-app/server
+web: racket -l samplerkt
